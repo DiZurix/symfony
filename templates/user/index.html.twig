@@ -3,9 +3,15 @@
 {% block title %}Hello UserController!{% endblock %}
 
 {% block body %}
-<div class="example-wrapper">
-    <h1>Création d'un nouvel utilisateur</h1>
 
+<style>
+    .example-wrapper { margin: 1em auto; max-width: 800px; width: 95%; font: 18px/1.5 sans-serif; }
+    .example-wrapper code { background: #F5F5F5; padding: 2px 6px; }
+</style>
+
+<div class="example-wrapper">
+    <h4>Création d'un nouvel utilisateur</h4>
+</div>
     <form action="/createUser" method="post">
         <fieldset>
             <legend>Formulaire de création</legend>
@@ -37,5 +43,5 @@
         </fieldset>
         <button type="submit" class="btn btn-primary">Submit</button>
     </form>
-</div>
+
 {% endblock %}
