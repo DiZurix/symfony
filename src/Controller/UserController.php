@@ -8,7 +8,9 @@ use Symfony\Component\Routing\Annotation\Route;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use App\Entity\Utilisateur;
+use PhpParser\Node\Expr\Empty_;
 use Symfony\Component\HttpFoundation\Session\Session;
+use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 
 class UserController extends AbstractController
 {
@@ -53,5 +55,56 @@ class UserController extends AbstractController
             'controller_name' => 'Liste des utilisateurs',
             'listeUser' => $listeUser,
         ]);
+    }
+    
+    /**    
+     * @Route("/deleteUser/{id}", name="deleteUser")
+     */
+    public function deleteUser(Request $request, EntityManagerInterface $manager, Utilisateur $id): Response
+    {
+		//Suppression de l'objet avec l'id passé en paramètre
+		$manager->remove($id);
+        $manager->flush();
+
+        return $this->redirectToRoute('listeUser');
+    }
+
+    /**    
+     * @Route("/updateUser/{id}", name="updateUser")
+     */
+    public function updateUser(Request $request, EntityManagerInterface $manager, Utilisateur $id): Response
+    {
+		//Requête pour récupérer toute la table User
+		$updateUser = $manager->getRepository(Utilisateur::class)->findAll();
+
+        $sess = $request->getSession();
+        //Créer des variables utilisateur
+        $sess->set("idUserModif", $id->getId());
+
+        return $this->render('user/updateUser.html.twig', [
+            'controller_name' => "Mise à jour d'un utilisateur",
+            'user' => $id,
+        ]);
+    }
+
+    /**    
+     * @Route("/updateUserBdd", name="updateUserBdd")
+     */
+    public function updateUserBdd(Request $request, EntityManagerInterface $manager): Response
+    {
+        $sess = $request->getSession();
+        //Créer des variables de session
+        $id = $sess->get("idUserModif");
+        $user = $manager->getRepository(Utilisateur::class)->findOneById($id);
+        if(!empty($request->request->get('nom')))
+            $user->setNom($request->request->get('nom'));
+        if(!empty($request->request->get('prenom')))
+            $user->setPrenom($request->request->get('prenom'));
+        if(!empty($request->request->get('code')))
+            $user->setCode($request->request->get('code'));
+        $manager->persist($user);
+        $manager->flush();
+
+        return $this->redirectToRoute('listeUser');
     }
 }

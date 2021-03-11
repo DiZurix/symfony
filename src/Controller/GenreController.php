@@ -7,7 +7,9 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
+use App\Entity\Utilisateur;
 use App\Entity\Genre;
+use App\Entity\Document;
 use Symfony\Component\HttpFoundation\Session\Session;
 
 class GenreController extends AbstractController
@@ -57,10 +59,17 @@ class GenreController extends AbstractController
      */
     public function deleteGenre(Request $request, EntityManagerInterface $manager, Genre $id): Response
     {
-		//Suppression de l'objet avec l'id passé en paramètre
-		$manager->remove($id);
-        $manager->flush();
-
+        $testGenre = $manager->getRepository(Document::class)->findByTypeId($id->getId());
+        if($testGenre){
+            $this->addFlash(
+                'notice',
+                'Ce genre ne peut pas être supprimé'
+            );
+        }
+        else{
+            $manager->remove($id);
+            $manager->flush();
+        }
         return $this->redirectToRoute('listeGenre');
     }
 

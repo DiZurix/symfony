@@ -63,4 +63,66 @@ class GedController extends AbstractController
             'listeGenre' => $listeGenre,
         ]);
     }
+
+    /**    
+     * @Route("/listeGed", name="listeGed")
+     */
+    public function listeGed(Request $request, EntityManagerInterface $manager): Response
+    {
+		//Requête pour récupérer toute la table Document
+		$listeGed = $manager->getRepository(Document::class)->findAll();
+
+        return $this->render('ged/listeGed.html.twig', [
+            'controller_name' => 'Liste des documents',
+            'listeGed' => $listeGed,
+        ]);
+    }
+
+    /**    
+     * @Route("/deleteGed/{id}", name="deleteGed")
+     */
+    public function deleteGed(Request $request, EntityManagerInterface $manager, Document $id): Response
+    {
+		//Suppression de l'objet avec l'id passé en paramètre
+		$manager->remove($id);
+        $manager->flush();
+
+        return $this->redirectToRoute('listeGed');
+    }
+
+    /**    
+     * @Route("/updateGed/{id}", name="updateGed")
+     */
+    public function updateGed(Request $request, EntityManagerInterface $manager, Document $id): Response
+    {
+        $sess = $request->getSession();
+        //Créer des variables de ssions
+        $sess->set("idGedModif", $id->getId());
+
+        return $this->render('ged/updateGed.html.twig', [
+            'controller_name' => "Mise à jour d'un genre",
+            'ged' => $id,
+        ]);
+    }
+
+    /**    
+     * @Route("/updateGedBdd", name="updateGedBdd")
+     */
+    public function updateGedBdd(Request $request, EntityManagerInterface $manager): Response
+    {
+        $sess = $request->getSession();
+        //Créer des variables de session
+        $id = $sess->get("idGedModif");
+        $ged = $manager->getRepository(Document::class)->findOneById($id);
+        if(!empty($request->request->get('chemin')))
+            $ged->setChemin($request->request->get('chemin'));
+        if(!empty($request->request->get('actif')))
+            $ged->setActif($request->request->get('actif'));
+        if(!empty($request->request->get('nom')))
+            $ged->setNom($request->request->get('nom'));
+        $manager->persist($ged);
+        $manager->flush();
+
+        return $this->redirectToRoute('listeGed');
+    }
 }
