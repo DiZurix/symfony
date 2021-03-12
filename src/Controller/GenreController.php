@@ -17,11 +17,17 @@ class GenreController extends AbstractController
     /**
      * @Route("/formGenre", name="formGenre")
      */
-    public function index(): Response
+    public function formGenre(Request $request): Response
     {
-        return $this->render('genre/index.html.twig', [
-            'controller_name' => '',
-        ]);
+        $sess = $request->getSession();
+        if($sess->get("idUtilisateur")){
+            return $this->render('genre/index.html.twig', [
+                'controller_name' => '',
+            ]);
+        }
+        else{
+            return $this->redirectToRoute('authentification');
+        }   
     }
 
     /**

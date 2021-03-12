@@ -21,11 +21,17 @@ class GedController extends AbstractController
      */
     public function uploadGed(Request $request, EntityManagerInterface $manager): Response
     {
-        $listeGenre = $manager->getRepository(Genre::class)->findAll();
-        return $this->render('ged/uploadGed.html.twig', [
-            'controller_name' => "Upload d'un document",
-            'listeGenre' => $listeGenre,
-        ]);
+        $sess = $request->getSession();
+        if($sess->get("idUtilisateur")){
+            $listeGenre = $manager->getRepository(Genre::class)->findAll();
+            return $this->render('ged/uploadGed.html.twig', [
+                'controller_name' => "Upload d'un document",
+                'listeGenre' => $listeGenre,
+            ]);
+        }
+        else{
+            return $this->redirectToRoute('authentification');
+        }  
     }
 
     /**
@@ -33,35 +39,41 @@ class GedController extends AbstractController
      */
     public function insertGed(Request $request, EntityManagerInterface $manager): Response
     {
-        //Création d'un nouveau document
-        $Document = new Document();
-        //Récupération et transfert du fichier
-        $brochureFile = $request->files->get("fichier");
-        if ($brochureFile){
-            $newFilename = uniqid('', true) . "." .
-            $brochureFile->getClientOriginalExtension();
-            $brochureFile->move($this->getParameter('upload'), $newFilename);
-            //Insertion du document dans une base
-            if($request->request->get('choix') == NULL){
-                $actif = -1;
-            } else{
-                $actif=  1;
-            } 
-            $Document->setActif($actif);
-            $Document->setNom($request->request->get('nom'));
-            $Document->setTypeId($manager->getRepository(Genre::class)->findOneById($request->request->get('genre')));
-            $Document->setCreatedAt(new \Datetime);
-            $Document->setChemin($newFilename);
-    
-            $manager->persist($Document);
-            $manager->flush();
-        }
+        $sess = $request->getSession();
+        if($sess->get("idUtilisateur")){
+            //Création d'un nouveau document
+            $Document = new Document();
+            //Récupération et transfert du fichier
+            $brochureFile = $request->files->get("fichier");
+            if ($brochureFile){
+                $newFilename = uniqid('', true) . "." .
+                $brochureFile->getClientOriginalExtension();
+                $brochureFile->move($this->getParameter('upload'), $newFilename);
+                //Insertion du document dans une base
+                if($request->request->get('choix') == NULL){
+                    $actif = -1;
+                } else{
+                    $actif=  1;
+                } 
+                $Document->setActif($actif);
+                $Document->setNom($request->request->get('nom'));
+                $Document->setTypeId($manager->getRepository(Genre::class)->findOneById($request->request->get('genre')));
+                $Document->setCreatedAt(new \Datetime);
+                $Document->setChemin($newFilename);
+        
+                $manager->persist($Document);
+                $manager->flush();
+            }
 
-        $listeGenre = $manager->getRepository(Genre::class)->findAll();
-        return $this->render('ged/uploadGed.html.twig', [
-            'controller_name' => "Upload d'un document",
-            'listeGenre' => $listeGenre,
-        ]);
+            $listeGenre = $manager->getRepository(Genre::class)->findAll();
+            return $this->render('ged/uploadGed.html.twig', [
+                'controller_name' => "Upload d'un document",
+                'listeGenre' => $listeGenre,
+            ]);
+        }
+        else{
+            return $this->redirectToRoute('authentification');
+        }
     }
 
     /**    
@@ -69,13 +81,19 @@ class GedController extends AbstractController
      */
     public function listeGed(Request $request, EntityManagerInterface $manager): Response
     {
-		//Requête pour récupérer toute la table Document
-		$listeGed = $manager->getRepository(Document::class)->findAll();
+        $sess = $request->getSession();
+        if($sess->get("idUtilisateur")){
+            //Requête pour récupérer toute la table Document
+            $listeGed = $manager->getRepository(Document::class)->findAll();
 
-        return $this->render('ged/listeGed.html.twig', [
-            'controller_name' => 'Liste des documents',
-            'listeGed' => $listeGed,
-        ]);
+            return $this->render('ged/listeGed.html.twig', [
+                'controller_name' => 'Liste des documents',
+                'listeGed' => $listeGed,
+            ]);
+        }
+        else{
+            return $this->redirectToRoute('authentification');
+        }  
     }
 
     /**    
@@ -83,11 +101,22 @@ class GedController extends AbstractController
      */
     public function deleteGed(Request $request, EntityManagerInterface $manager, Document $id): Response
     {
-		//Suppression de l'objet avec l'id passé en paramètre
-		$manager->remove($id);
-        $manager->flush();
-
-        return $this->redirectToRoute('listeGed');
+        $sess = $request->getSession();
+        if($sess->get("idUtilisateur")){
+            if(unlink($this->getParameter('upload') . $id->getChemin())){ 
+                //Suppression de l'objet avec l'id passé en paramètre
+                $manager->remove($id);
+                $manager->flush();
+                $this->addFlash(
+                    'notice',
+                    'Le document à été supprimé'
+                );
+            }
+            return $this->redirectToRoute('listeGed');
+        }
+        else{
+            return $this->redirectToRoute('authentification');
+        }  
     }
 
     /**    
@@ -96,13 +125,18 @@ class GedController extends AbstractController
     public function updateGed(Request $request, EntityManagerInterface $manager, Document $id): Response
     {
         $sess = $request->getSession();
-        //Créer des variables de ssions
-        $sess->set("idGedModif", $id->getId());
+        if($sess->get("idUtilisateur")){
+            //Créer des variables de sessions
+            $sess->set("idGedModif", $id->getId());
 
-        return $this->render('ged/updateGed.html.twig', [
-            'controller_name' => "Mise à jour d'un genre",
-            'ged' => $id,
-        ]);
+            return $this->render('ged/updateGed.html.twig', [
+                'controller_name' => "Mise à jour d'un genre",
+                'ged' => $id,
+            ]);
+        }
+        else{
+            return $this->redirectToRoute('authentification');
+        } 
     }
 
     /**    
@@ -111,18 +145,45 @@ class GedController extends AbstractController
     public function updateGedBdd(Request $request, EntityManagerInterface $manager): Response
     {
         $sess = $request->getSession();
-        //Créer des variables de session
-        $id = $sess->get("idGedModif");
-        $ged = $manager->getRepository(Document::class)->findOneById($id);
-        if(!empty($request->request->get('chemin')))
-            $ged->setChemin($request->request->get('chemin'));
-        if(!empty($request->request->get('actif')))
-            $ged->setActif($request->request->get('actif'));
-        if(!empty($request->request->get('nom')))
-            $ged->setNom($request->request->get('nom'));
-        $manager->persist($ged);
-        $manager->flush();
+        if($sess->get("idUtilisateur")){
+            //Créer des variables de session
+            $id = $sess->get("idGedModif");
+            $ged = $manager->getRepository(Document::class)->findOneById($id);
+            if(!empty($request->request->get('chemin'))){
+                $ged->setChemin($request->request->get('chemin'));
+            } 
+            if(!empty($request->request->get('actif')))
+                $ged->setActif($request->request->get('actif'));
+            if(!empty($request->request->get('nom')))
+                $ged->setNom($request->request->get('nom'));
+            $manager->persist($ged);
+            $manager->flush();
 
-        return $this->redirectToRoute('listeGed');
+            return $this->redirectToRoute('listeGed');
+        }
+        else{
+            return $this->redirectToRoute('authentification');
+        } 
+    }
+
+    /**    
+     * @Route("/permission", name="permission")
+     */
+    public function permission(Request $request, EntityManagerInterface $manager, Document $id): Response
+    {
+        $sess = $request->getSession();
+        if($sess->get("idUtilisateur")){
+            //Récupération des listes
+            $listeGed = $manager->getRepository(Document::class)->findALl();
+            $listeUser = $manager->getRepository(Utilisateur::class)->findAll();
+            return $this->render('ged/permission.html.twig', [
+                'controller_name' => "Attribution d'une permission",
+                'listeGed' => $listeGed,
+                'listeUser' => $listeUser,
+            ]);
+        }
+        else{
+            return $this->redirectToRoute('authentification');
+        }  
     }
 }

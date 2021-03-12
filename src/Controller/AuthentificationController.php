@@ -15,7 +15,7 @@ class AuthentificationController extends AbstractController
     /**
      * @Route("/authentification", name="authentification")
      */
-    public function index(): Response
+    public function authentification(Request $request): Response
     {
         return $this->render('authentification/index.html.twig', [
             'controller_name' => 'Page de connexion',
@@ -46,7 +46,8 @@ class AuthentificationController extends AbstractController
             $sess->set("nomUtilisateur", $utilisateur->getNom());
             $sess->set("prenomUtilisateur", $utilisateur->getPrenom());
             return $this->redirectToRoute('dashboard');
-        }else{
+        }
+        else{
             return $this->redirectToRoute('authentification');
         }
         return new response(1);
