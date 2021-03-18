@@ -19,15 +19,10 @@ class UserController extends AbstractController
      */
     public function user(Request $request): Response
     {
-        $sess = $request->getSession();
-        if($sess->get("idUtilisateur")){
-            return $this->render('user/index.html.twig', [
-                'controller_name' => '',
-            ]);
-        }
-        else{
-            return $this->redirectToRoute('authentification');
-        }  
+
+        return $this->render('user/index.html.twig', [
+            'controller_name' => '',
+        ]);
     }
 
     /**

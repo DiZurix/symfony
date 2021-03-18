@@ -9,10 +9,14 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use App\Entity\Document;
 use App\Entity\Genre;
+use App\Entity\Autorisation;
+use App\Entity\Utilisateur;
+use App\Entity\Acces;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use App\Service\FileUploader;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use DateTime;
+use Symfony\Component\Security\Http\AccessMap;
 
 class GedController extends AbstractController
 {
@@ -24,9 +28,12 @@ class GedController extends AbstractController
         $sess = $request->getSession();
         if($sess->get("idUtilisateur")){
             $listeGenre = $manager->getRepository(Genre::class)->findAll();
+            $listeAutorisation = $manager->getRepository(Autorisation::class)->findAll();
             return $this->render('ged/uploadGed.html.twig', [
                 'controller_name' => "Upload d'un document",
                 'listeGenre' => $listeGenre,
+                'listeAutorisation' => $listeAutorisation,
+                'listeUsers' => $manager->getRepository(Utilisateur::class)->findAll(),
             ]);
         }
         else{
@@ -40,40 +47,50 @@ class GedController extends AbstractController
     public function insertGed(Request $request, EntityManagerInterface $manager): Response
     {
         $sess = $request->getSession();
-        if($sess->get("idUtilisateur")){
-            //Création d'un nouveau document
-            $Document = new Document();
-            //Récupération et transfert du fichier
-            $brochureFile = $request->files->get("fichier");
-            if ($brochureFile){
-                $newFilename = uniqid('', true) . "." .
-                $brochureFile->getClientOriginalExtension();
-                $brochureFile->move($this->getParameter('upload'), $newFilename);
-                //Insertion du document dans une base
-                if($request->request->get('choix') == NULL){
-                    $actif = -1;
-                } else{
-                    $actif=  1;
-                } 
-                $Document->setActif($actif);
-                $Document->setNom($request->request->get('nom'));
-                $Document->setTypeId($manager->getRepository(Genre::class)->findOneById($request->request->get('genre')));
-                $Document->setCreatedAt(new \Datetime);
-                $Document->setChemin($newFilename);
-        
-                $manager->persist($Document);
-                $manager->flush();
+        //création d'un nouveau document
+        $Document = new Document();
+        //Récupération et transfert du fichier
+        //dd($request->request->get('choix'));
+        $brochureFile = $request->files->get("fichier");
+        if ($brochureFile){
+            $newFilename = uniqid('', true) . "." . $brochureFile->getClientOriginalExtension();
+            $brochureFile->move($this->getParameter('upload'), $newFilename);
+            //insertion du document dans la base.
+            if($request->request->get('choix') == "on"){
+                $actif=1;
+            }else{
+                $actif=2;
             }
-
-            $listeGenre = $manager->getRepository(Genre::class)->findAll();
-            return $this->render('ged/uploadGed.html.twig', [
-                'controller_name' => "Upload d'un document",
-                'listeGenre' => $listeGenre,
-            ]);
+            $Document->setActif($actif);
+            $Document->setNom($request->request->get('nom'));
+            $Document->setTypeId($manager->getRepository(Genre::class)->findOneById($request->request->get('genre')));
+            $Document->setCreatedAt(new \Datetime);
+            $Document->setChemin($newFilename);
+            
+            $manager->persist($Document);
+            $manager->flush();
         }
-        else{
-            return $this->redirectToRoute('authentification');
+        if($request->request->get('utilisateur') != -1){
+            $user = $manager->getRepository(Utilisateur::class)->findOneById($request->request->get('utilisateur'));
+            $autorisation = $manager->getRepository(Autorisation::class)->findOneById($request->request->get('autorisation'));
+            $acces = new Acces();
+            $acces->setUtilisateurId($user);
+            $acces->setAutorisationId($autorisation);
+            $acces->setDocumentId($Document);
+            $manager->persist($acces);
+            $manager->flush();
         }
+        //Création d'un accès pour l'uploadeur (propriétaire)
+        $user = $manager->getRepository(Utilisateur::class)->findOneById($sess->get("idUtilisateur"));
+        $autorisation = $manager->getRepository(Autorisation::class)->findOneById(1);
+        $acces = new Acces();
+        $acces->setUtilisateurId($user);
+        $acces->setAutorisationId($autorisation);
+        $acces->setDocumentId($Document);
+        $manager->persist($acces);
+        $manager->flush();
+        
+        return $this->redirectToRoute('listeGed');
     }
 
     /**    
@@ -81,14 +98,15 @@ class GedController extends AbstractController
      */
     public function listeGed(Request $request, EntityManagerInterface $manager): Response
     {
+        //Ouverture de la session
         $sess = $request->getSession();
         if($sess->get("idUtilisateur")){
-            //Requête pour récupérer toute la table Document
-            $listeGed = $manager->getRepository(Document::class)->findAll();
-
+            //Récupération de l'utilisateur
+            $user = $manager->getRepository(Utilisateur::class)->findOneById($sess->get("idUtilisateur"));
+            $listeAcces = $manager->getRepository(Acces::class)->findByUtilisateurId($user);
             return $this->render('ged/listeGed.html.twig', [
-                'controller_name' => 'Liste des documents',
-                'listeGed' => $listeGed,
+                'controller_name' => 'Liste des Documents',
+                'listeAcces' => $listeAcces,
             ]);
         }
         else{
@@ -103,6 +121,13 @@ class GedController extends AbstractController
     {
         $sess = $request->getSession();
         if($sess->get("idUtilisateur")){
+            //Supprimer le lien dans l'acces
+            $recupListeAccess = $manager->getRepository(Acces::class)->findByDocumentId($id);
+            foreach($recupListeAccess as $doc){
+                $manager->remove($doc);
+                $manager->flush();
+            } 
+            //Suppression physique du document
             if(unlink($this->getParameter('upload') . $id->getChemin())){ 
                 //Suppression de l'objet avec l'id passé en paramètre
                 $manager->remove($id);
