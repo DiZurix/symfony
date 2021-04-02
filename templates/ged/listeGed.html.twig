@@ -96,7 +96,7 @@
                   <i class="bi bi-download"></i>
                   </a>
                   {% if item.autorisationId.id == 1 %}
-                     <a href="/deleteDocument/{{ item.documentId.id }}">
+                     <a href="/deleteGed/{{ item.documentId.id }}">
                      <i class="bi bi-trash"></i>
                      </a>
                      <a href="#exampleModal{{ item.documentId.id }}" data-toggle="modal" data-target="#exampleModal{{ item.documentId.id }}"><i class="bi bi-share-fill"></i></a>
@@ -106,4 +106,5 @@
          {% endfor %}
       </tbody>
    </table>
+   </div>
 {% endblock %}

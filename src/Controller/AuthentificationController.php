@@ -62,13 +62,32 @@ class AuthentificationController extends AbstractController
         $sess = $request->getSession();
         if($sess->get("idUtilisateur")){ 
 			$listeDocuments = $manager->getRepository(Acces::class)->findByUtilisateurId($sess->get("idUtilisateur"));
+            $listeDocumentsAll = $manager->getRepository(Acces::class)->findAll();
 			$nbDocument = 0;
+            $lastDocument = new \Datetime("2000-01-01");
+            $documentPrive = Array();
+            $flag = 0;
 			foreach($listeDocuments as $val){
 				$nbDocument ++ ;
+                if ($val->getDocumentId()->getCreatedAt() > $lastDocument){
+                    $lastDocument = $val->getDocumentId()->getCreatedAt();
+                    $doc = $val->getDocumentId();
+                }
+                foreach($listeDocumentsAll as $valeur){
+                    if($valeur->getDocumentId()->getId() == $val->getDocumentId()->getId() && $valeur->getUtilisateurId()->getId() != $sess->get("idUtilisateur")){ 
+                        $flag = $flag + 1;
+                    }
+                }
+                if($flag == 0){
+                    $documentPrive[] = $val;
+                } 
+                $flag = 0;
 			}
 			return $this->render('authentification/dashboard.html.twig', [
 				'controller_name' => 'Espace Client',
 				'nbDocument' => $nbDocument,
+                'doc' => $doc,
+                'listeDocumentUtilisateur' => $documentPrive,
 			]);
 		}else{
 			return $this->redirectToRoute('authentification');
